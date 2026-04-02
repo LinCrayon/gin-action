@@ -10,6 +10,5 @@ func main() {
 			"message": "Hello Gin",
 		})
 	})
-
 	r.Run(":8080")
 }
