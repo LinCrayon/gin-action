@@ -1,6 +1,6 @@
 name: Go CI (Gin Web)
 
-on:
+on:   #触发开关 有人push或pr到main分支就执行
   push:
     branches:
       - main
@@ -8,22 +8,26 @@ on:
     branches:
       - main
 
+#使用最新的 Node.js 24 引擎执行脚本
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     name: Build and Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest   #物理环境
     steps:
       # 1. 拉取代码
-      - name: Checkout code
+      - name: 拉取代码
         uses: actions/checkout@v4
 
       # 2. 安装 Go 环境
-      - name: Setup Go
+      - name: 安装golang环境
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      # 3. 缓存 Go 依赖
+      # 3. 缓存 Go 依赖,下次构建更快
       - name: Cache Go modules
         uses: actions/cache@v4
         with:
@@ -35,19 +39,19 @@ jobs:
             ${{ runner.os }}-go-
 
       # 4. 下载依赖
-      - name: Install dependencies
+      - name: 下载Go依赖
         run: go mod tidy
 
       # 5. 编译项目
-      - name: Build
+      - name: 编译项目
         run: go build -v ./...
 
       # 6. 运行测试
-      - name: Test
+      - name: 运行测试
         run: go test -v ./...
 
       # 7. 启动 Gin 服务测试
-      - name: Run Gin Server
+      - name: 启动 Gin 服务测试
         run: |
           nohup go run main.go &
           sleep 5
