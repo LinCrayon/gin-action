@@ -26,18 +26,24 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            # 1. 进入物理工作目录
-            mkdir -p /var/www/gin-app
+            # 使用 sudo 确保有权创建目录
+            sudo mkdir -p /var/www/gin-app
+            sudo chown -R sudolsq:sudolsq /var/www/gin-app
             cd /var/www/gin-app
             
-            # 2. 拉取最新代码 (假设服务器已配置 git 凭据)
-            git pull origin main || git clone https://github.com/${{ github.repository }}.git .
+            # 物理清理旧进程
+            sudo pkill gin-server || true
             
-            # 3. 物理编译
-            export PATH=$PATH:/usr/local/go/bin
+            # 拉取代码
+            git pull origin main || git clone https://github.com/LinCrayon/gin-action.git .
+            
+            # 物理查找 Go 路径（GCP 上的 Go 可能在 /usr/bin/go）
+            export PATH=$PATH:/usr/local/go/bin:/usr/bin
             go build -o gin-server main.go
             
-            # 4. 重启服务 (假设你配置了 Systemd)
-            # sudo systemctl restart gin-app
+            # 物理启动
+            chmod +x gin-server
             nohup ./gin-server > nohup.out 2>&1 &
-            echo "Deployment physical complete!"
+            sleep 2
+            echo "Physical check:"
+            ps aux | grep gin-server
