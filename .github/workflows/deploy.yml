@@ -26,24 +26,35 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            # 使用 sudo 确保有权创建目录
-            sudo mkdir -p /var/www/gin-app
-            sudo chown -R sudolsq:sudolsq /var/www/gin-app
-            cd /var/www/gin-app
+            # 1. 定义物理路径（直接用当前用户家目录，避开权限坑）
+            DEPLOY_DIR="$HOME/gin-app"
+            mkdir -p $DEPLOY_DIR
+            cd $DEPLOY_DIR
             
-            # 物理清理旧进程
+            # 2. 彻底清理旧进程和旧代码
             sudo pkill gin-server || true
+            sudo rm -rf ./*
             
-            # 拉取代码
-            git pull origin main || git clone https://github.com/LinCrayon/gin-action.git .
-            
-            # 物理查找 Go 路径（GCP 上的 Go 可能在 /usr/bin/go）
+            # 3. 环境变量物理对齐 (必须包含 Go 的路径)
             export PATH=$PATH:/usr/local/go/bin:/usr/bin
-            go build -o gin-server main.go
             
-            # 物理启动
+            # 4. 物理拉取代码
+            echo "Starting git clone..."
+            git clone https://github.com/LinCrayon/gin-action.git .
+            
+            # 5. 编译 (确保进入了有 go.mod 的目录)
+            if [ -f "go.mod" ]; then
+              go mod tidy
+              go build -o gin-server .
+            else
+              echo "Error: go.mod not found!" && exit 1
+            fi
+            
+            # 6. 物理后台启动
             chmod +x gin-server
             nohup ./gin-server > nohup.out 2>&1 &
-            sleep 2
-            echo "Physical check:"
-            ps aux | grep gin-server
+            
+            # 7. 物理验证
+            sleep 3
+            echo "--- Physical Process Check ---"
+            ps aux | grep gin-server | grep -v grep
