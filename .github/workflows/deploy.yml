@@ -1,0 +1,43 @@
+# deploy.yml
+name: Go CD (Deploy to Debian)
+
+on:
+  workflow_run:
+    workflows: ["Go CI (Gin Web)"] # 只有当 CI 成功后才触发
+    types:
+      - completed
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    # 物理判断：只有 CI 成功且是 main 分支才执行
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            # 1. 进入物理工作目录
+            mkdir -p /var/www/gin-app
+            cd /var/www/gin-app
+            
+            # 2. 拉取最新代码 (假设服务器已配置 git 凭据)
+            git pull origin main || git clone https://github.com/${{ github.repository }}.git .
+            
+            # 3. 物理编译
+            export PATH=$PATH:/usr/local/go/bin
+            go build -o gin-server main.go
+            
+            # 4. 重启服务 (假设你配置了 Systemd)
+            # sudo systemctl restart gin-app
+            nohup ./gin-server > nohup.out 2>&1 &
+            echo "Deployment physical complete!"
